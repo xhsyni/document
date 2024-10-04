@@ -2,7 +2,6 @@ import fitz
 import re
 import numpy as np
 import pandas as pd
-import comtypes.client
 import os
 from collections import Counter
 from nltk.tokenize import word_tokenize
@@ -10,8 +9,6 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 import nltk
 import time
-import sys
-import platform
 import subprocess
 nltk.data.path.append('./nltk_data')
 
