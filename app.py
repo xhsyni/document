@@ -3,6 +3,7 @@ from email_flask import email_extractor_bp
 from pdf_flask import pdf_extractor_bp
 from pptx_flask import pptx_extractor_bp
 from word_flask import word_extractor_bp
+import os
 
 app = Flask(__name__)
 extract_email = app.register_blueprint(email_extractor_bp)
