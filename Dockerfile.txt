@@ -1,20 +1,14 @@
-# Base image
-FROM python:3.11-slim
+# Use the official LibreOffice image
+FROM libreoffice/loolwsd
 
-# Install LibreOffice and other dependencies
-RUN apt-get update && \
-    apt-get install -y libreoffice xvfb && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Set up the application environment
+# Set the working directory
 WORKDIR /app
-COPY . /app
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install any additional dependencies if needed
+RUN apt-get update && apt-get install -y libreoffice
 
-# Expose the port (if your app runs on port 8000, for example)
-EXPOSE 8000
+# Expose the port on which LibreOffice will run
+EXPOSE 9980
 
-# Start the application
-CMD ["python", "app.py"]
+# Command to run LibreOffice
+CMD ["loolwsd"]
