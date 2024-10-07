@@ -1,23 +1,20 @@
-# Use a slim version of the Python 3.11 image (smaller footprint)
+# Base image
 FROM python:3.11-slim
 
-# Install LibreOffice and unoconv
+# Install LibreOffice and other dependencies
 RUN apt-get update && \
-    apt-get install -y libreoffice libreoffice-writer unoconv && \
-    apt-get clean
+    apt-get install -y libreoffice xvfb && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Set the working directory inside the container
+# Set up the application environment
 WORKDIR /app
+COPY . /app
 
-# Copy the requirements file and install Python dependencies
-COPY requirements.txt .
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy your application code into the container
-COPY . .
+# Expose the port (if your app runs on port 8000, for example)
+EXPOSE 8000
 
-# Expose the port your Flask app runs on (optional, default Flask port is 5000)
-EXPOSE 5000
-
-# Specify the command to run your application
+# Start the application
 CMD ["python", "app.py"]
