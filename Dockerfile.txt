@@ -3,6 +3,8 @@ FROM python:3.11-slim
 
 # Install LibreOffice
 RUN apt-get update && apt-get install -y libreoffice
+RUN which libreoffice
+RUN which soffice
 
 # Your other project dependencies
 COPY . /app
