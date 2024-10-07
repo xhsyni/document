@@ -2,8 +2,12 @@ services:
   - type: web
     name: your-app
     env: python
-    buildCommand: |
-      apt-get update
-      apt-get install -y libreoffice xvfb
-      pip install -r requirements.txt
+    buildCommand:
+      - apt-get update
+
+    buildCommand:
+      - apt-get install -y libreoffice xvfb
+
+    buildCommand:
+      - pip install -r requirements.txt
     startCommand: python app.py
