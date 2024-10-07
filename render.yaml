@@ -3,5 +3,7 @@ services:
     name: your-app
     env: python
     buildCommand: |
-      sudo apt install unoconv
+      apt-get update
+      apt-get install -y libreoffice xvfb
+      pip install -r requirements.txt
     startCommand: python app.py
