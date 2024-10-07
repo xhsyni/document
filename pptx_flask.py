@@ -17,7 +17,7 @@ def convert_to_pdf(input_file, output_file):
     try:
         output_dir = os.path.dirname(output_file)
         subprocess.run([
-            r'C:\\Program Files\\LibreOffice\\program\\soffice.exe',  # Path to soffice.exe
+            'unoconv',
             '--headless',
             '--convert-to', 'pdf',
             '--outdir', output_dir,  # Output directory for the PDF
