@@ -1,7 +1,0 @@
-services:
-  - type: web
-    name: your-app
-    env: python
-    buildCommand: |
-      sudo apt install unoconv
-    startCommand: python app.py
