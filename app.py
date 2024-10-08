@@ -4,12 +4,14 @@ from pdf_flask import pdf_extractor_bp
 from pptx_flask import pptx_extractor_bp
 from word_flask import word_extractor_bp
 import os
+from flask_cors import CORS
 
 app = Flask(__name__)
 extract_email = app.register_blueprint(email_extractor_bp)
 extract_pdf = app.register_blueprint(pdf_extractor_bp)
 extract_pptx = app.register_blueprint(pptx_extractor_bp)
 extract_word = app.register_blueprint(word_extractor_bp)
+CORS(app)
 
 @app.route('/')
 def index():
