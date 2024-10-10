@@ -70,6 +70,41 @@ def groupFontSize(df):
 
     return df
 
+def getfileyear(test, pdf_name):
+    # Get the File Year
+    month_year = []
+    month_pattern = r"\b(?:January|February|March|April|May|June|July|August|September|October|November|December) \d{4}\b"
+    year_pattern = r"\b\d{4}\b"
+
+    # Applying the pattern to find month and year in the 'Content' column
+    month_list = test['Content'].apply(lambda x: re.findall(month_pattern, x)).sum()
+    year_list = test['Content'].apply(lambda x: re.findall(year_pattern, x)).sum()
+
+    month_count = Counter(month_list)
+    year_count = Counter(year_list)
+
+    unique_month_list = list(month_count.items())
+    unique_year_list = list(year_count.items())
+
+    year_key, year_value = max(unique_year_list, key=lambda item: item[1])
+
+    if unique_month_list:
+        for month, count in unique_month_list:
+            if year_key in month:
+                month_year.append(month)
+                break
+    else:
+        month_year.append(year_key)
+
+    if any(char.isdigit() for char in pdf_name):
+        fileName = pdf_name
+    else:
+        fileName = pdf_name+"_"+year_key
+
+    final_df = pd.DataFrame({'Date': month_year, 'File Name': fileName})
+
+    return final_df,fileName
+
 def clean_text(text):
     # Convert text to lowercase and whitespaces
     text = re.sub(r'\s+', ' ', text.lower())
@@ -194,9 +229,20 @@ def normalize_text(text):
 
     return ' '.join(tokens)
 
-def runAllProcess(doc,footer_exist):
+def concatAll(final_df,df):
+    # Merge the DataFrames on the 'Date' column
+    concatenated_df = pd.concat([final_df, df], axis=1)
+
+    # Fill up the null value
+    concatenated_df['Date'].fillna(method='ffill', inplace=True)
+    concatenated_df['File Name'].fillna(method='ffill', inplace=True)
+
+    return concatenated_df
+
+def runAllProcess(doc,file_name,footer_exist):
     all = fonts(doc)
     df = groupFontSize(all)
+    finaldf,storeName = getfileyear(df,file_name)
     df["Content"] = df["Content"].apply(clean_text)
     df = df[df['Content'].str.strip() != '']
     df.reset_index(drop=True, inplace=True)
@@ -209,8 +255,8 @@ def runAllProcess(doc,footer_exist):
     df = pd.merge(df, header_rows, on='Page numbers', how='left')
     df = pd.merge(df, footer_rows, on='Page numbers', how='left')
     df['Content'] = df['Content'].apply(normalize_text)
-
-    return df
+    final_df = concatAll(finaldf,df)
+    return final_df
 
 from flask import Blueprint, render_template, render_template_string, send_file,request
 import threading
@@ -284,9 +330,9 @@ def extract_ppt():
             
             if output is None:
                 return "Error converting file to PDF", 500
-
+            print(filename.split(".")[0])
             doc = fitz.open(output_pdf)
-            final_df = runAllProcess(doc,request.form.get('footerexists-file'))
+            final_df = runAllProcess(doc,filename.split(".")[0],request.form.get('footerexists-file'))
             end_time = time.time()
             execution_time = end_time-start_time
             doc.close()
@@ -379,7 +425,7 @@ def extract_ppt():
                     return "Error converting file to PDF", 500
 
                 doc = fitz.open(output_pdf)
-                final_df = runAllProcess(doc,request.form.get('footerexists-folder'))
+                final_df = runAllProcess(doc,filename.split(".")[0],request.form.get('footerexists-folder'))
                 end_time = time.time()
                 execution_time = end_time-start_time
                 doc.close()
