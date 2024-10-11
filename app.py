@@ -29,7 +29,7 @@ def pdf():
 def ppt():
     return extract_pptx
 
-@app.route('/word, methods=['POST']')
+@app.route('/word', methods=['POST'])
 def word():
     return extract_word
     
