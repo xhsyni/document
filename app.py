@@ -13,23 +13,23 @@ extract_pptx = app.register_blueprint(pptx_extractor_bp)
 extract_word = app.register_blueprint(word_extractor_bp)
 CORS(app)
 
-@app.route('/', methods=['POST'])
+@app.route('/')
 def index():
     return render_template('pop_up.html')
 
-@app.route('/email', methods=['POST'])
+@app.route('/email')
 def email():
     extract_email
     
-@app.route('/pdf', methods=['POST'])
+@app.route('/pdf')
 def pdf():
     extract_pdf
 
-@app.route('/ppt', methods=['POST'])
+@app.route('/ppt')
 def ppt():
     extract_pptx
 
-@app.route('/word', methods=['POST'])
+@app.route('/word')
 def word():
     extract_word
     
