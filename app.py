@@ -17,21 +17,21 @@ CORS(app)
 def index():
     return render_template('pop_up.html')
 
-@app.route('/email')
+@app.route('/email', methods=['POST'])
 def email():
-    extract_email
+    return extract_email
     
-@app.route('/pdf')
+@app.route('/pdf', methods=['POST'])
 def pdf():
-    extract_pdf
+    return extract_pdf
 
-@app.route('/ppt')
+@app.route('/ppt', methods=['POST'])
 def ppt():
-    extract_pptx
+    return extract_pptx
 
-@app.route('/word')
+@app.route('/word, methods=['POST']')
 def word():
-    extract_word
+    return extract_word
     
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
