@@ -10,14 +10,16 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 import nltk
 import subprocess
+from flask import Blueprint, request, send_file, render_template_string, render_template
+from werkzeug.utils import secure_filename
+import time
 nltk.data.path.append('./nltk_data')
 
 def convert_to_pdf(input_file, output_file):
     try:
         output_dir = os.path.dirname(output_file)
         subprocess.run([
-            # Path to soffice.exe
-            'libreoffice',  
+            'libreoffice',
             '--headless',
             '--convert-to', 'pdf',
             # Output directory for the PDF
@@ -71,6 +73,16 @@ def group(test):
 
     return test
 
+def getUniqueFont(df):
+    word_combinations = []
+
+    for i, row in df.iterrows():
+        word_combinations.append((row[2], row[3]))
+
+    word_combinations_df = pd.DataFrame(word_combinations)
+    unique_combinations = word_combinations_df.drop_duplicates()
+
+    return len(unique_combinations)
 
 def getfileyear(test, pdf_name):
     # Get the File Year
@@ -154,9 +166,9 @@ def identify_header(df):
 
     # Iterate over each page's data
     for page_num, page_data in df.groupby("Page numbers"):
-        if len(page_data) > 2:
-            header_row = page_data.loc[page_data['Block-Top'].idxmin()]
-            header_combinations.append((header_row[2], header_row[3], header_row[1]))  # (font, size, block)
+        if len(page_data) > 2 and len(page_data.iloc[0][5].split(" "))<20:
+            header_row = page_data.iloc[0]
+            header_combinations.append((header_row[1], header_row[2], header_row[3]))  # (font, size, block)
 
     # Find the most common combination of font, size, and block
     most_common_combination = max(Counter(header_combinations).items(), key=lambda x: x[1])[0]
@@ -171,8 +183,8 @@ def identify_footer(df):
 
     # Iterate over each page's data
     for page_num, page_data in df.groupby("Page numbers"):
-        footer_row = page_data.loc[page_data['Block-Top'].idxmax()]
-        footer_combinations.append((footer_row[2], footer_row[3], footer_row[1]))  # (font, size, block)
+        footer_row = page_data.iloc[-1]
+        footer_combinations.append((footer_row[1], footer_row[2], footer_row[3]))  # (font, size, block)
 
     # Find the most common combination of font, size, and block
     most_common_combination = max(Counter(footer_combinations).items(), key=lambda x: x[1])[0]
@@ -376,38 +388,75 @@ def concatAll(final_df,df):
     return concatenated_df
 
 # call function
-def runAllProcess(doc,file_name,headerexists,footerexists):
+def runAllProcess(doc,file_name,header_exists,footer_exists):
     # extract all the text from pdf
     allfontdf = fonts(doc)
     test = group(allfontdf)
-
-    # get file year and file name
-    finaldf,storeName = getfileyear(test,file_name)
-
-    # Clean Content
-    test['Content'] = test['Content'].apply(clean_text)
-
-    # Remove rows where the 'Content' column is empty or contains only whitespace
     test = test[test['Content'].str.strip() != '']
 
-    # Check if it is Bold
-    test['isBold'] = test['Font'].apply(isBold)
-    test.reset_index(drop=True, inplace=True)
+    option = getUniqueFont(test)
+        
+    # Inconsistent font style
+    if option > 30:
+        # get file year and file name
+        finaldf,storeName = getfileyear(test,file_name)
 
-    # Sort page numbers ascending and size false
-    test['Content'] = test['Content'].apply(cleanText)
-    test = test.sort_values(by=['Page numbers', 'Size','Block-Top'], ascending=[True, False,True]).reset_index(drop=True)
+        # Clean Content
+        test['Content'] = test['Content'].apply(clean_text)
 
-    # Identify the style of header and footer
-    header_footer = setHeaderFooter(test,headerexists,footerexists)
+        # Remove rows where the 'Content' column is empty or contains only whitespace
+        test = test[test['Content'].str.strip() != '']
 
-    # Get the header and footer from the dataframe
-    test,headerdf,footerdf = getHeaderFooter(test,header_footer)
+        # Check if it is Bold
+        test['isBold'] = test['Font'].apply(isBold)
+        test.reset_index(drop=True, inplace=True)
 
-    test = groupFontSize(test)
-    test['Block-Top'] = test['Block-Top'].apply(mean_block)
-    test['Size'] = test['Size'].apply(mean_size)
-    test = test.sort_values(by=['Page numbers', 'Size','Block-Top'], ascending=[True, False,True]).reset_index(drop=True)
+        # Sort page numbers ascending and size false
+        test = test.sort_values(by=['Page numbers', 'Size'], ascending=[True, False]).reset_index(drop=True)
+        test = groupFontSize(test)
+        test['Block-Top'] = test['Block-Top'].apply(mean_block)
+        test['Size'] = test['Size'].apply(mean_size)
+        test['Content'] = test['Content'].apply(cleanText)
+        test = test.sort_values(by=['Page numbers', 'Size','Block-Top'], ascending=[True, False,True]).reset_index(drop=True)
+        new_column_order = ['Page numbers','Font','Size','Block-Top','Content',"isBold"]
+        arranged_test = test[new_column_order]
+
+        # Identify the style of header and footer
+        header_footer = setHeaderFooter(arranged_test,header_exists,footer_exists)
+
+        # Get the header and footer from the dataframe
+        test,headerdf,footerdf = getHeaderFooter(arranged_test,header_footer)
+
+    # Consistent font style
+    else:
+        # get file year and file name
+        finaldf,storeName = getfileyear(test,file_name)
+
+        # Clean Content
+        test['Content'] = test['Content'].apply(clean_text)
+
+        # Remove rows where the 'Content' column is empty or contains only whitespace
+        test = test[test['Content'].str.strip() != '']
+
+        # Check if it is Bold
+        test['isBold'] = test['Font'].apply(isBold)
+        test.reset_index(drop=True, inplace=True)
+
+        # Sort page numbers ascending and size false
+        test['Content'] = test['Content'].apply(cleanText)
+        test = test.sort_values(by=['Page numbers','Block-Top'], ascending=[True,True]).reset_index(drop=True)
+        new_column_order = ['Page numbers','Font','Size','Block-Top','Content',"isBold"]
+        arranged_test = test[new_column_order]
+
+        # Identify the style of header and footer
+        header_footer = setHeaderFooter(arranged_test,header_exists,footer_exists)
+        # Get the header and footer from the dataframe
+        test,headerdf,footerdf = getHeaderFooter(arranged_test,header_footer)
+
+        test = groupFontSize(test)
+        test['Block-Top'] = test['Block-Top'].apply(mean_block)
+        test['Size'] = test['Size'].apply(mean_size)
+        test = test.sort_values(by=['Page numbers', 'Size','Block-Top'], ascending=[True, False,True]).reset_index(drop=True)
 
     # Get and remove the heading from the dataframe
     headingsdf = getHeading(test)
@@ -423,12 +472,6 @@ def runAllProcess(doc,file_name,headerexists,footerexists):
 
     return final_df,storeName
 
-from flask import Blueprint, request, send_file, render_template_string, render_template
-import threading
-from werkzeug.utils import secure_filename
-import time
-import os
-import fitz
 
 word_extractor_bp = Blueprint('word_extractor_bp',__name__)
 
@@ -560,7 +603,6 @@ def extract_doc():
                     </body>
                 </html>
             """)
-
         file_path = []
         all_dfs = []
         maindf = pd.DataFrame()
@@ -598,34 +640,28 @@ def extract_doc():
                         </body>
                     </html>
                 """)
-
+            
             if file and allowed_file(file.filename):
                 filename = secure_filename(file.filename)
                 file_path = os.path.join(UPLOAD_FOLDER, filename)
                 file.save(file_path)
-
                 header_exists = request.form.get('headerexists-folder')
                 footer_exists = request.form.get('footerexists-folder')
 
                 start_time = time.time()
                 output_pdf = os.path.join(TEMP_FOLDER, filename.split(".")[0] + ".pdf")
                 output = convert_to_pdf(file_path, output_pdf)
-                
                 if output is None:
                     return "Error converting file to PDF", 500
-
                 doc = fitz.open(output_pdf)
                 final_df,store_name = runAllProcess(doc,filename.split(".")[0],header_exists,footer_exists)
                 end_time = time.time()
                 execution_time = end_time-start_time
                 doc.close()
-
                 csv_filename = f"{store_name}.csv"
                 csv_path = os.path.join(CSV_FOLDER, csv_filename)
                 final_df.to_csv(csv_path, index=False)
-
                 all_dfs.append((csv_filename, round(execution_time,2)))
-
                 os.remove(file_path)
                 os.remove(output_pdf)
 
